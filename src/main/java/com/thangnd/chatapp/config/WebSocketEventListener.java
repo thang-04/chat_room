@@ -18,6 +18,7 @@ public class WebSocketEventListener {
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
+        // Extract username from session attributes
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String username = (String) headerAccessor.getSessionAttributes().get("username");
         if (username != null) {
@@ -26,6 +27,7 @@ public class WebSocketEventListener {
                     .type(ChatMessage.MessageType.LEAVE)
                     .sender(username)
                     .build();
+            //send message to all users subscribed to /topic/public
             messagingTemplate.convertAndSend("/topic/public", chatMessage);
         }
     }
