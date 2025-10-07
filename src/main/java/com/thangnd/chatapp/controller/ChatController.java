@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
@@ -23,7 +24,7 @@ import java.util.List;
 public class ChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final ChatService chatMessageService;
+         private final ChatService chatMessageService;
 
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage) {
@@ -45,6 +46,17 @@ public class ChatController {
                                                               @PathVariable String recipientId) {
         return ResponseEntity
                 .ok(chatMessageService.findChatMessages(senderId, recipientId));
+    }
+
+    @MessageMapping("/room/{roomId}")
+    public void processRoomMessage(@DestinationVariable String roomId, @Payload ChatMessage chatMessage) {
+        ChatMessage savedMsg = chatMessageService.saveToRoom(chatMessage, roomId);
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId, savedMsg);
+    }
+
+    @GetMapping("/messages/room/{roomId}")
+    public ResponseEntity<List<ChatMessage>> findRoomMessages(@PathVariable String roomId) {
+        return ResponseEntity.ok(chatMessageService.findRoomMessages(roomId));
     }
 
 //    @Autowired

@@ -8,17 +8,20 @@ const messageInput = document.querySelector('#message');
 const connectingElement = document.querySelector('.connecting');
 const chatArea = document.querySelector('#chat-messages');
 const logout = document.querySelector('#logout');
+const roomIdInput = document.querySelector('#roomId');
 
 let stompClient = null;
 let nickname = null;
 let fullname = null;
 let selectedUserId = null;
+let joinedRoomId = null;
 
 function connect(event) {
-    nickname = document.querySelector('#nickname').value.trim();
     fullname = document.querySelector('#fullname').value.trim();
+    nickname = fullname; // align senderId with fullName (no separate nickname)
+    joinedRoomId = roomIdInput.value.trim();
 
-    if (nickname && fullname) {
+    if (fullname && joinedRoomId) {
         usernamePage.classList.add('hidden');
         chatPage.classList.remove('hidden');
 
@@ -32,7 +35,7 @@ function connect(event) {
 
 
 function onConnected() {
-    stompClient.subscribe(`/user/queue/messages`, onMessageReceived);
+    stompClient.subscribe(`/topic/rooms/${joinedRoomId}`, onRoomMessageReceived);
     stompClient.subscribe(`/user/public`, onMessageReceived);
 
     // register the connected user
@@ -40,8 +43,9 @@ function onConnected() {
         {},
         JSON.stringify({nickName: nickname, fullName: fullname, status: 'ONLINE'})
     );
-    document.querySelector('#connected-user-fullname').textContent = fullname;
-    findAndDisplayConnectedUsers().then();
+    document.querySelector('#connected-user-fullname').textContent = `${fullname} (Room: ${joinedRoomId})`;
+    // Optional: could fetch room history here
+    fetchAndDisplayRoomChat().then();
 }
 
 async function findAndDisplayConnectedUsers() {
@@ -120,6 +124,15 @@ function displayMessage(senderId, content) {
 
 async function fetchAndDisplayUserChat() {
     const userChatResponse = await fetch(`/messages/${nickname}/${selectedUserId}`);
+async function fetchAndDisplayRoomChat() {
+    const roomChatResponse = await fetch(`/messages/room/${joinedRoomId}`);
+    const roomChat = await roomChatResponse.json();
+    chatArea.innerHTML = '';
+    roomChat.forEach(chat => {
+        displayMessage(chat.senderId, chat.content);
+    });
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
     const userChat = await userChatResponse.json();
     chatArea.innerHTML = '';
     userChat.forEach(chat => {
@@ -144,7 +157,8 @@ function sendMessage(event) {
             content: messageInput.value.trim(),
             timestamp: new Date()
         };
-        stompClient.send("/app/chat", {}, JSON.stringify(chatMessage));
+        // send to room
+        stompClient.send(`/app/room/${joinedRoomId}`, {}, JSON.stringify(chatMessage));
         displayMessage(nickname, messageInput.value.trim());
         messageInput.value = '';
     }
@@ -174,6 +188,12 @@ async function onMessageReceived(payload) {
         nbrMsg.classList.remove('hidden');
         nbrMsg.textContent = '';
     }
+}
+
+async function onRoomMessageReceived(payload) {
+    const message = JSON.parse(payload.body);
+    displayMessage(message.senderId, message.content);
+    chatArea.scrollTop = chatArea.scrollHeight;
 }
 
 function onLogout() {

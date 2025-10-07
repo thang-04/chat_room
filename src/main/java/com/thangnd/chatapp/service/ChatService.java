@@ -27,4 +27,14 @@ public class ChatService {
         var chatId = chatRoomService.getChatRoomId(senderId, recipientId, false);
         return chatId.map(repository::findByChatId).orElse(new ArrayList<>());
     }
+
+    public ChatMessage saveToRoom(ChatMessage chatMessage, String roomId) {
+        chatMessage.setRoomId(roomId);
+        repository.save(chatMessage);
+        return chatMessage;
+    }
+
+    public List<ChatMessage> findRoomMessages(String roomId) {
+        return repository.findByRoomIdOrderByTimestampAsc(roomId);
+    }
 }
