@@ -1,6 +1,5 @@
 spring:
   data:
-    data:
       mongodb:
         uri: mongodb://localhost:27017/chat_app
         database: chat_app
